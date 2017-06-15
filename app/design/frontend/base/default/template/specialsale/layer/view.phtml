@@ -1,0 +1,220 @@
+<?php
+/**
+ * Magento
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License (AFL 3.0)
+ * that is bundled with this package in the file LICENSE_AFL.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://opensource.org/licenses/afl-3.0.php
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@magento.com so we can send you a copy immediately.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade Magento to newer
+ * versions in the future. If you wish to customize Magento for your
+ * needs please refer to http://www.magento.com for more information.
+ *
+ * @category    design
+ * @package     rwd_default
+ * @copyright   Copyright (c) 2006-2015 X.commerce, Inc. (http://www.magento.com)
+ * @license     http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ */
+?>
+<?php
+/**
+ * Category layered navigation
+ *
+ * @see Mage_Catalog_Block_Layer_View
+ */
+?>
+
+<?php
+
+// Herausfinden, ob wir uns auf Suchergebnisseite befinden:
+$pageIdentifier = Mage::app()->getFrontController()->getAction()->getFullActionName();
+$searchResultsPage = false;
+if ($pageIdentifier == "catalogsearch_result_index") {
+   // then quick search result page
+   // Mage::log('We are on the search results page');
+   $searchResultsPage = true;
+}
+/* if ($pageIdentifier == "catalogsearch_advanced_result"){
+   //then advanced search result page
+} */
+// if ($searchResultsPage) Mage::log('We are indeed on the search results page');
+
+// Mage::log($this->canShowBlock()); 
+
+?>
+
+<?php // if($this->canShowBlock()): ?>
+<div class="block block-layered-nav<?php if (!$this->getLayer()->getState()->getFilters()): ?> block-layered-nav--no-filters<?php endif; ?>">
+    <!--<div class="block-title">
+        <strong><span><?php // echo $this->__('Shop By') ?></span></strong>
+    </div>-->
+    <div class="block-content toggle-content">
+
+        <?php // echo $this->getStateHtml() ?>
+
+        <?php if ($this->getLayer()->getState()->getFilters()): ?>
+            <!--<div class="actions"><a href="<?php // echo $this->getClearUrl() ?>"><?php // echo $this->__('Clear All') ?></a></div>-->
+        <?php endif; ?>
+
+        <?php // echo $this->canShowOptions(); ?>       
+ 
+        <?php // if($this->canShowOptions()): ?>
+            <p class="block-subtitle block-subtitle--filter"><?php echo $this->__('Refine Selection') ?></p>
+            <dl id="narrow-by-list">
+                <?php $_filters = $this->getFilters() ?>
+                <?php foreach ($_filters as $_filter): ?>
+                  <?php if ( ($_filter->getItemsCount()) || ((!($_filter->getItemsCount()))&&(($this->__($_filter->getName())) == "Kategorie")) ): ?>
+                    <dt<?php if (($this->__($_filter->getName())) == "Kategorie") echo " class='cat-nav'"; ?>>
+                        <?php 
+
+                           // Category-Breadcrumbs generieren (/hjl/ ... waaay too long, I know @jck@twa ;-)
+                           
+                           if (($this->__($_filter->getName())) == "Kategorie") {
+                             
+                              // Aktuelle Kategorie herausfinden: 
+                              $currentCat = Mage::getSingleton('catalog/layer')->getCurrentCategory();  // Aktuelle Kategorie auslesen
+                              if (isset($_GET['cat'])) $currentCat = Mage::getModel('catalog/category')->load($_GET['cat']);
+                              else {
+                                 $currentCat = Mage::getModel('catalog/category')->load($currentCat->getId()); // Aktuelle Kategorie erneut auslesen (ansonsten: Creare-Problem mit Namen!)
+                              }
+
+                              // Array mit Kategorien (aktuelle -> Parent(s) bis ausschließlich Rootkategorie) füllen:
+                              $catCrumbs = array();
+                              $iCat = $currentCat;                              
+                              $i = 0;
+                              while ($iCat->getName() != "Default Category") {
+                                 // array_unshift($catCrumbs, $iCat->getName());
+                                 // array_unshift($catCrumbs, array( 'name' => $iCat->getName(), 'url' => $iCat->getUrl() ) );
+                                 $catCrumbs[$i]['name'] = $iCat->getName();
+                                 $catCrumbs[$i]['url'] = $iCat->getUrl();
+                                 $catCrumbs[$i]['id'] = $iCat->getId();
+                                 $iCat = $iCat->getParentCategory();
+                                 $i++;
+                              }
+                              $catCrumbs = array_reverse($catCrumbs);
+
+                              // Kategorie-Breadcrumbs beginnen immer mit "Home":
+                              $catCrumbsHtml = "<a class='ancestor-category home-link' href='".Mage::getBaseUrl()."'>Home</a><span class='slash'>/</span>";
+
+                              // Sind wir auf der Suchergebnisseite? Dann wird " / Suchergebnisse für: 'xyz' / " eingeschoben:
+                              if ($searchResultsPage) {
+                                 // danach kommen noch Unterkategorien:
+                                 if (count($catCrumbs) > 0) $catCrumbsHtml .= "<a class='ancestor-category back-to-search-link' href='".Mage::getBaseUrl()."catalogsearch/result/index/?q=".$_GET["q"]."#main'>Suchergebnisse für: '".$_GET["q"]."'</a><span class='slash'>/</span>";
+                                 // danach kommt nichts mehr:
+                                 else $catCrumbsHtml .= "<span class='current-category'>Suchergebnisse für: '".$_GET["q"]."'</span>";
+                              }
+
+                              // Jetzt die eigentlichen Kategorie-Crumbs (ein Array-Bucket je Crumb, Linkaufbau abhängig von Seitentyp):
+                              for ($i=0; $i<count($catCrumbs); $i++) {
+                                 // Suchergebnisseite:
+                                 if ($searchResultsPage) {
+                                    // danach kommen noch Unterkategorien:
+                                    if ($i < count($catCrumbs)-1) $catCrumbsHtml .= "<a class='ancestor-category' href='".Mage::getBaseUrl()."catalogsearch/result/index/?cat=".$catCrumbs[$i]['id']."&q=".$_GET["q"]."#main'>".$catCrumbs[$i]['name']."</a><span class='slash'>/</span>";
+                                    // danach kommt nichts mehr:
+                                    else $catCrumbsHtml .= "<span class='current-category'>".$catCrumbs[$i]['name'];
+                                 }
+                                 // Normale Kategorien-Seite (per Filter oder Menü):
+                                 else {
+                                    // danach kommen noch Unterkategorien:
+                                    if ($i < count($catCrumbs)-1) $catCrumbsHtml .= "<a class='ancestor-category' href='".$catCrumbs[$i]['url']."#main'>" . $catCrumbs[$i]['name'] . "</a><span class='slash'>/</span> ";
+                                    // danach kommt nichts mehr:
+                                    else $catCrumbsHtml .= "<span class='current-category'>".$catCrumbs[$i]['name']."</span><!--<span class='slash'>/</span>-->";
+                                 }
+                              }
+
+                              echo "<span class='cat-title'>".$this->__($_filter->getName())."</span>";
+
+                              echo " <span class='cat-crumbs'>".$catCrumbsHtml."</span>";
+                              // echo " <span class='cat-crumbs'>( / ".Mage::getSingleton('catalog/layer')->getCurrentCategory()->getParentCategory()->getParentCategory()->getName()." / ".Mage::getSingleton('catalog/layer')->getCurrentCategory()->getName()." / ... )</span>";
+
+                           }
+                           else echo $this->__($_filter->getName());
+                    
+                        ?>
+                    </dt>
+                    <?php 
+
+                    if ( (($this->__($_filter->getName())) == "Kategorie") && (!$searchResultsPage) ) {
+
+                        if (!($_filter->getItemsCount())) { /* echo "<dd class='cat-nav no-subcats'>Keine weiteren Unterkategorien</dd>"; */ }
+
+                        else {
+
+                           $subCatsHTML = "<ol>";
+                           $subCatsXML = simplexml_load_string($_filter->getHtml());
+                           $xpLinks = $subCatsXML->xpath('/ol/li/a');
+                           foreach ($xpLinks as $xpLink) {
+                              $catName = (string) $xpLink;
+                              $catLink = (string) $xpLink['href'];
+                              $catId = substr($catLink, strrpos($catLink, "cat=")+4);
+                              $catCount = (string) $xpLink->span;
+//                              $catUrl = Mage::getModel('catalog/category')->load($catId)->getUrl();
+                              $catUrl = Mage::getBaseUrl() . "specialsale/category/view/id/$catId"; 
+
+                              // Mage::log($catName . " (id=".$catId."): " . $catLink . " " . $catCount  . "\n");
+
+                              $subCatsHTML .= "<li><a href='".$catUrl."#main'>".$catName."<span class='count'>".$catCount."</span></a></li>";
+                           }
+
+                           // $subCatsXMLDOM = dom_import_simplexml($subCatsXML);
+                           // $subCatsHTML = $subCatsXMLDOM->ownerDocument->saveXML($subCatsXMLDOM->ownerDocument->documentElement);
+                           // Mage::log($subCatsXML['li'][0]['a']);
+
+                           $subCatsHTML .= "</ol>";
+                           // $subCatsHTML = $_filter->getHtml();
+                           echo "<dd class='cat-nav'>" . $subCatsHTML . "</dd>";
+  
+                        }
+
+                    }
+
+                    else if ( (($this->__($_filter->getName())) == "Kategorie") && ($searchResultsPage)  ) {
+                        
+                        if (!($_filter->getItemsCount())) {  }
+
+                        else {
+
+                           $subCatsHTML = "<ol>";
+                           $subCatsXML = simplexml_load_string($_filter->getHtml());
+                           $xpLinks = $subCatsXML->xpath('/ol/li/a');
+                           foreach ($xpLinks as $xpLink) {
+                              $catName = (string) $xpLink;
+                              $catLink = (string) $xpLink['href'];
+                              $catId = substr($catLink, strrpos($catLink, "cat=")+4);
+                              $catCount = (string) $xpLink->span;
+
+                              if ($catId != 493) {
+                                 $subCatsHTML .= "<li><a href='".Mage::getBaseUrl()."catalogsearch/result/index/?cat=".$catId."'>".$catName."<span class='count'>".$catCount."</span></a></li>";
+                              }
+
+                           }
+
+                           $subCatsHTML .= "</ol>";
+                           echo "<dd class='cat-nav'>" . $subCatsHTML . "</dd>";
+  
+                        }
+
+                    }
+
+                    else echo "<dd>".$_filter->getHtml()."</dd>";
+
+                    ?>
+
+                    <!--<dd<?php //if (($this->__($_filter->getName())) == "Kategorie") echo " class='cat-nav'"; ?>><?php //echo $_filter->getHtml() ?></dd>-->
+
+                <?php endif; ?>
+                <?php endforeach; ?>
+            </dl>
+            <script type="text/javascript">decorateDataList('narrow-by-list')</script>
+        <?php // endif; ?>
+    </div>
+</div>
+<?php // endif; ?>

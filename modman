@@ -1,0 +1,7 @@
+app/code/community/Iunctim/SpecialSale/                                     app/code/community/Iunctim/SpecialSale/
+
+app/etc/modules/*                                     	                    app/etc/modules/
+
+app/design/frontend/base/default/layout/specialsale.xml                     app/design/frontend/base/default/layout/specialsale.xml
+
+app/design/frontend/base/default/template/specialsale/layer/view.phtml     app/design/frontend/base/default/template/specialsale/layer/view.phtml    
